@@ -210,7 +210,7 @@ defmodule Dataloader do
 
   @spec pending_batches?(t) :: boolean
   def pending_batches?(loader) do
-    Enum.any?(loader.sources, fn {_name, source} -> Source.pending_batches?(source) end)
+    Enum.any?(loader.sources, fn {_name, source} -> source != :timeout && Source.pending_batches?(source) end)
   end
 
   defp get_source(loader, source_name) do
