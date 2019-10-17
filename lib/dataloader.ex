@@ -100,6 +100,8 @@ defmodule Dataloader do
 
   @default_get_policy :raise_on_error
 
+  @task_module Application.get_env(:absinthe, :task_module, Task)
+
   @doc """
   Create a new Dataloader instance.
 
@@ -240,7 +242,7 @@ defmodule Dataloader do
     # if the current process is linked to something, and then that something
     # dies in the middle of us loading stuff.
     task =
-      Task.async(fn ->
+      @task_module.async(fn ->
         # The purpose of `:trap_exit` here is so that we can ensure that any failures
         # within the tasks do not kill the current process. We want to get results
         # back no matter what.
@@ -251,7 +253,7 @@ defmodule Dataloader do
 
     # The infinity is safe here because the internal
     # tasks all have their own timeout.
-    Task.await(task, :infinity)
+    @task_module.await(task, :infinity)
   end
 
   @doc ~S"""
@@ -283,7 +285,7 @@ defmodule Dataloader do
 
     results =
       items
-      |> Task.async_stream(fun, task_opts)
+      |> @task_module.async_stream(fun, task_opts)
       |> Enum.map(fn
         {:ok, result} -> {:ok, result}
         {:exit, reason} -> {:error, reason}
