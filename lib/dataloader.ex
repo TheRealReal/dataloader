@@ -100,8 +100,6 @@ defmodule Dataloader do
 
   @default_get_policy :raise_on_error
 
-  @task_module Application.get_env(:absinthe, :task_module, Task)
-
   @doc """
   Create a new Dataloader instance.
 
@@ -242,7 +240,7 @@ defmodule Dataloader do
     # if the current process is linked to something, and then that something
     # dies in the middle of us loading stuff.
     task =
-      @task_module.async(fn ->
+      task_module().async(fn ->
         # The purpose of `:trap_exit` here is so that we can ensure that any failures
         # within the tasks do not kill the current process. We want to get results
         # back no matter what.
@@ -253,7 +251,7 @@ defmodule Dataloader do
 
     # The infinity is safe here because the internal
     # tasks all have their own timeout.
-    @task_module.await(task, :infinity)
+    task_module().await(task, :infinity)
   end
 
   @doc ~S"""
@@ -285,7 +283,7 @@ defmodule Dataloader do
 
     results =
       items
-      |> @task_module.async_stream(fun, task_opts)
+      |> task_module().async_stream(fun, task_opts)
       |> Enum.map(fn
         {:ok, result} -> {:ok, result}
         {:exit, reason} -> {:error, reason}
@@ -311,5 +309,12 @@ defmodule Dataloader do
   @spec pmap(list(), fun(), keyword()) :: map()
   def pmap(items, fun, opts \\ []) do
     async_safely(__MODULE__, :run_tasks, [items, fun, opts])
+  end
+
+  # We use this configurable task module to trace code that runs within
+  # dataloader on Datadog. In the API we set this config to `Datadog.Tracer`,
+  # which is defined in that repo.
+  defp task_module do
+    Application.get_env(:absinthe, :task_module, Task)
   end
 end
